@@ -4,3 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+
+rclrs = "0.7"
+transforms = "1.2"
+
+geometry_msgs = "*"
+service_msgs = "*"
+unique_identifier_msgs = "*"
+tf2_msgs = "*"
+nav_msgs = "*"
+sensor_msgs = "*"
+nalgebra = "0.33"
+
+crossterm = { version = "0.28", features = ["event-stream"] }
+futures = "0.3"
+futures-timer = "3.0"
+ratatui = "0.29"
+tokio = { version = "1", features = ["full"] }
+
+[dependencies.confy]
+version = "0.6"
+features = ["yaml_conf"]
+default-features = false
