@@ -1,7 +1,8 @@
+use crate::config::PoseStyle;
 use crate::inputs::listeners::Listeners;
 use crate::modes::{input, AppMode, BaseMode, Drawable};
 use crate::ros::ROS;
-use nalgebra::{Isometry3, Point3, Quaternion, Translation3, UnitQuaternion};
+use nalgebra::{Isometry3, Quaternion, Translation3, UnitQuaternion};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line as TextLine, Span};
 use ratatui::widgets::canvas::{Canvas, Context, Line, Points};
@@ -9,6 +10,31 @@ use ratatui::widgets::{Block, Borders};
 use ratatui::Frame;
 use std::sync::Arc;
 use transforms::time::Timestamp;
+
+fn draw_arrow(ctx: &mut Context, x: f64, y: f64, yaw: f64, length: f64, color: Color) {
+    let (sin, cos) = yaw.sin_cos();
+    let tip_x = x + length * cos;
+    let tip_y = y + length * sin;
+    ctx.draw(&Line { x1: x, y1: y, x2: tip_x, y2: tip_y, color });
+    let lx = x + length * 0.5 * cos - length * 0.25 * sin;
+    let ly = y + length * 0.5 * sin + length * 0.25 * cos;
+    ctx.draw(&Line { x1: tip_x, y1: tip_y, x2: lx, y2: ly, color });
+    let rx = x + length * 0.5 * cos + length * 0.25 * sin;
+    let ry = y + length * 0.5 * sin - length * 0.25 * cos;
+    ctx.draw(&Line { x1: tip_x, y1: tip_y, x2: rx, y2: ry, color });
+}
+
+fn draw_axes(ctx: &mut Context, x: f64, y: f64, yaw: f64, length: f64) {
+    let (sin, cos) = yaw.sin_cos();
+    ctx.draw(&Line { x1: x, y1: y, x2: x + length * cos, y2: y + length * sin, color: Color::Red });
+    ctx.draw(&Line { x1: x, y1: y, x2: x - length * sin, y2: y + length * cos, color: Color::Green });
+}
+
+fn draw_pose_lines(ctx: &mut Context, poses: &[(f64, f64, f64)], color: Color) {
+    for w in poses.windows(2) {
+        ctx.draw(&Line { x1: w[0].0, y1: w[0].1, x2: w[1].0, y2: w[1].1, color });
+    }
+}
 
 /// Modes that render inside a canvas viewport implement this.
 /// `Drawable` is then automatically provided via the blanket impl below.
@@ -165,8 +191,8 @@ impl UseViewport for Viewport {
         }
 
         ctx.layer();
-        // Layer 1: footprints
-        for fp in &self.listeners.footprints {
+        // Layer 1: polygons
+        for fp in &self.listeners.polygons {
             let lines = fp.lines.read().unwrap();
             for &(x1, y1, x2, y2) in lines.iter() {
                 ctx.draw(&Line {
@@ -187,26 +213,64 @@ impl UseViewport for Viewport {
         }
 
         ctx.layer();
-        // Layer 3: robot axes
-        let iso = self.robot_iso();
-        let origin = iso.translation.vector;
-        let x_tip = iso.transform_point(&Point3::new(self.axis_length, 0.0, 0.0));
-        let y_tip = iso.transform_point(&Point3::new(0.0, self.axis_length, 0.0));
+        // Layer 3: pointclouds (per-point color)
+        for pc in &self.listeners.pointclouds {
+            let pts = pc.points.read().unwrap();
+            for pt in pts.iter() {
+                ctx.draw(&Points { coords: &[(pt.x, pt.y)], color: pt.color });
+            }
+        }
 
-        ctx.draw(&Line {
-            x1: origin.x,
-            y1: origin.y,
-            x2: y_tip.x,
-            y2: y_tip.y,
-            color: Color::Green,
-        });
-        ctx.draw(&Line {
-            x1: origin.x,
-            y1: origin.y,
-            x2: x_tip.x,
-            y2: x_tip.y,
-            color: Color::Red,
-        });
+        ctx.layer();
+        // Layer 4: pose stamped
+        for listener in &self.listeners.poses {
+            if let Some((x, y, yaw)) = *listener.pose.read().unwrap() {
+                let color = Color::Rgb(listener.config.color.r, listener.config.color.g, listener.config.color.b);
+                match listener.config.style {
+                    PoseStyle::Arrow => draw_arrow(ctx, x, y, yaw, self.axis_length, color),
+                    PoseStyle::Axes  => draw_axes(ctx, x, y, yaw, self.axis_length),
+                    PoseStyle::Line  => draw_arrow(ctx, x, y, yaw, self.axis_length, color),
+                }
+            }
+        }
+
+        ctx.layer();
+        // Layer 5: pose arrays
+        for listener in &self.listeners.pose_arrays {
+            let color = Color::Rgb(listener.config.color.r, listener.config.color.g, listener.config.color.b);
+            let poses = listener.poses.read().unwrap();
+            match listener.config.style {
+                PoseStyle::Arrow => {
+                    for &(x, y, yaw) in poses.iter() {
+                        draw_arrow(ctx, x, y, yaw, self.axis_length, color);
+                    }
+                }
+                PoseStyle::Axes => {
+                    for &(x, y, yaw) in poses.iter() {
+                        draw_axes(ctx, x, y, yaw, self.axis_length);
+                    }
+                }
+                PoseStyle::Line => draw_pose_lines(ctx, &poses, color),
+            }
+        }
+
+        ctx.layer();
+        // Layer 6: robot axes
+        let iso = self.robot_iso();
+        let (_, _, yaw) = iso.rotation.euler_angles();
+        draw_axes(ctx, iso.translation.x, iso.translation.y, yaw, self.axis_length);
+
+        ctx.layer();
+        // Layer 7: paths
+        for path in &self.listeners.paths {
+            let lines = path.lines.read().unwrap();
+            for &(x1, y1, x2, y2) in lines.iter() {
+                ctx.draw(&Line {
+                    x1, y1, x2, y2,
+                    color: Color::Rgb(path.config.color.r, path.config.color.g, path.config.color.b),
+                });
+            }
+        }
     }
 }
 

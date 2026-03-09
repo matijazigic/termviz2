@@ -55,6 +55,34 @@ pub struct ListenerConfigColor {
     pub color: Color,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum PoseStyle {
+    #[default]
+    Arrow,
+    Axes,
+    Line,
+}
+
+fn default_pose_style() -> PoseStyle {
+    PoseStyle::default()
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PoseListenerConfig {
+    pub topic: String,
+    pub color: Color,
+    #[serde(default = "default_pose_style")]
+    pub style: PoseStyle,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PointCloud2ListenerConfig {
+    pub topic: String,
+    #[serde(default = "bool::default")]
+    pub use_rgb: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MapListenerConfig {
     pub topic: String,
@@ -81,9 +109,17 @@ pub struct Termviz2Config {
     #[serde(default)]
     pub map_topics: Vec<MapListenerConfig>,
     #[serde(default)]
-    pub footprint_topics: Vec<ListenerConfigColor>,
+    pub polygon_topics: Vec<ListenerConfigColor>,
     #[serde(default)]
     pub laser_topics: Vec<ListenerConfigColor>,
+    #[serde(default)]
+    pub pose_topics: Vec<PoseListenerConfig>,
+    #[serde(default)]
+    pub pose_array_topics: Vec<PoseListenerConfig>,
+    #[serde(default)]
+    pub path_topics: Vec<ListenerConfigColor>,
+    #[serde(default)]
+    pub pointcloud2_topics: Vec<PointCloud2ListenerConfig>,
 }
 
 impl Default for Termviz2Config {
@@ -113,7 +149,7 @@ impl Default for Termviz2Config {
                 color: default_map_color(),
                 threshold: default_map_threshold(),
             }],
-            footprint_topics: vec![ListenerConfigColor {
+            polygon_topics: vec![ListenerConfigColor {
                 topic: "/robot_0/local_costmap/published_footprint".to_string(),
                 color: color_blue(),
             }],
@@ -121,6 +157,10 @@ impl Default for Termviz2Config {
                 topic: "scan".to_string(),
                 color: Color { r: 200, g: 0, b: 0 },
             }],
+            pose_topics: vec![],
+            pose_array_topics: vec![],
+            path_topics: vec![],
+            pointcloud2_topics: vec![],
         }
     }
 }

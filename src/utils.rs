@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use crossterm::event::KeyCode;
 
 /// Converts the config key mapping (action -> key string) into

@@ -1,4 +1,7 @@
-pub mod footprint;
+pub mod polygon;
 pub mod laser;
 pub mod listeners;
 pub mod map;
+pub mod path;
+pub mod pointcloud;
+pub mod pose;

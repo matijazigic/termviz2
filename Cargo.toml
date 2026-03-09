@@ -17,6 +17,8 @@ tf2_msgs = "*"
 nav_msgs = "*"
 sensor_msgs = "*"
 nalgebra = "0.33"
+byteorder = "1.5"
+colorgrad = "0.7"
 
 crossterm = { version = "0.28", features = ["event-stream"] }
 futures = "0.3"
