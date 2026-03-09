@@ -1,11 +1,11 @@
-use crate::config::ListenerConfigColor;
+use crate::config::PathListenerConfig;
 use crate::ros::ROS;
 use nalgebra::geometry::{Isometry3, Point3, Quaternion, Translation3, UnitQuaternion};
 use rclrs::{RclrsError, SubscriptionOptions};
 use std::sync::{Arc, RwLock};
 
 pub struct PathListener {
-    pub config: ListenerConfigColor,
+    pub config: PathListenerConfig,
     /// Pre-computed line segments (x1, y1, x2, y2) in fixed-frame world space.
     pub lines: Arc<RwLock<Vec<(f64, f64, f64, f64)>>>,
     _sub: Arc<dyn std::any::Any + Send + Sync>,
@@ -13,7 +13,7 @@ pub struct PathListener {
 
 impl PathListener {
     pub fn new(
-        config: ListenerConfigColor,
+        config: PathListenerConfig,
         ros: Arc<ROS>,
         fixed_frame: String,
     ) -> Result<Self, RclrsError> {

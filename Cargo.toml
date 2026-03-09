@@ -15,10 +15,12 @@ service_msgs = "*"
 unique_identifier_msgs = "*"
 tf2_msgs = "*"
 nav_msgs = "*"
+visualization_msgs = "*"
 sensor_msgs = "*"
 nalgebra = "0.33"
 byteorder = "1.5"
 colorgrad = "0.7"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 
 crossterm = { version = "0.28", features = ["event-stream"] }
 futures = "0.3"

@@ -1,3 +1,4 @@
+pub mod image_view;
 pub mod viewport;
 
 use ratatui::Frame;
@@ -12,6 +13,8 @@ pub mod input {
     pub const NEXT: &str = "next";
     pub const PREVIOUS: &str = "previous";
     pub const SHOW_HELP: &str = "show_help";
+    pub const ROTATE_LEFT: &str = "rotate_left";
+    pub const ROTATE_RIGHT: &str = "rotate_right";
 }
 
 /// Common interface every app mode must implement.

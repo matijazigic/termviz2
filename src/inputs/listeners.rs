@@ -1,4 +1,6 @@
 use crate::config::Termviz2Config;
+use crate::inputs::image::ImageListener;
+use crate::inputs::marker::{MarkerArrayListener, MarkerListener};
 use crate::inputs::polygon::PolygonStampedListener;
 use crate::inputs::laser::LaserListener;
 use crate::inputs::map::MapListener;
@@ -16,6 +18,9 @@ pub struct Listeners {
     pub pose_arrays: Vec<PoseArrayListener>,
     pub paths: Vec<PathListener>,
     pub pointclouds: Vec<PointCloud2Listener>,
+    pub markers: Vec<MarkerListener>,
+    pub marker_arrays: Vec<MarkerArrayListener>,
+    pub images: Vec<ImageListener>,
 }
 
 impl Listeners {
@@ -90,6 +95,30 @@ impl Listeners {
             }
         }).collect();
 
-        Listeners { maps, polygons, lasers, poses, pose_arrays, paths, pointclouds }
+        let markers = conf.marker_topics.iter().filter_map(|cfg| {
+            match MarkerListener::new(cfg.clone(), Arc::clone(&ros), conf.fixed_frame.clone()) {
+                Ok(l) => Some(l),
+                Err(e) => {
+                    eprintln!("Failed to create marker listener for '{}': {:?}", cfg.topic, e);
+                    None
+                }
+            }
+        }).collect();
+
+        let marker_arrays = conf.marker_array_topics.iter().filter_map(|cfg| {
+            match MarkerArrayListener::new(cfg.clone(), Arc::clone(&ros), conf.fixed_frame.clone()) {
+                Ok(l) => Some(l),
+                Err(e) => {
+                    eprintln!("Failed to create marker array listener for '{}': {:?}", cfg.topic, e);
+                    None
+                }
+            }
+        }).collect();
+
+        let images: Vec<ImageListener> = conf.image_topics.iter()
+            .map(|cfg| ImageListener::new(cfg.clone(), Arc::clone(&ros)))
+            .collect();
+
+        Listeners { maps, polygons, lasers, poses, pose_arrays, paths, pointclouds, markers, marker_arrays, images }
     }
 }

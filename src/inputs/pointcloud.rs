@@ -39,6 +39,7 @@ impl PointCloud2Listener {
         let tf = Arc::clone(&ros.tf);
         let frames = Arc::clone(&ros.frames);
         let use_rgb = config.use_rgb;
+        let default_color = Color::Rgb(config.default_color.r, config.default_color.g, config.default_color.b);
 
         let sub = ros.node.create_subscription::<sensor_msgs::msg::PointCloud2, _>(
             SubscriptionOptions::new(&config.topic),
@@ -68,53 +69,57 @@ impl PointCloud2Listener {
                 let Some(z_off) = field_offset("z", &msg.fields) else { return };
 
                 let n_pts = (msg.width * msg.height) as usize;
-                let step = msg.point_step as usize;
+                let step = msg.point_step as u32;
 
-                // First pass: transform points and compute z range for colorization.
-                let mut raw: Vec<(f64, f64, f64)> = Vec::with_capacity(n_pts);
+                // Read and transform all points.
+                // world_z is kept separately for z-gradient colorization.
+                let mut points: Vec<ColoredPoint> = Vec::with_capacity(n_pts);
+                let mut world_z: Vec<f64> = Vec::with_capacity(n_pts);
                 let mut min_z = f64::MAX;
                 let mut max_z = f64::MIN;
 
                 for i in 0..n_pts {
-                    let base = (i * step) as u32;
+                    let base = i as u32 * step;
                     let lx = read_f32(&msg.data, base + x_off) as f64;
                     let ly = read_f32(&msg.data, base + y_off) as f64;
                     let lz = read_f32(&msg.data, base + z_off) as f64;
-                    if lx.is_nan() || ly.is_nan() || lz.is_nan() {
-                        continue;
-                    }
                     let w = tf_iso.transform_point(&Point3::new(lx, ly, lz));
                     if w.z < min_z { min_z = w.z; }
                     if w.z > max_z { max_z = w.z; }
-                    raw.push((w.x, w.y, w.z));
+                    world_z.push(w.z);
+                    points.push(ColoredPoint { x: w.x, y: w.y, color: Color::Reset });
                 }
 
-                let rgb_off = if use_rgb { field_offset("rgb", &msg.fields) } else { None };
-                let z_range = (max_z - min_z).max(f64::EPSILON);
-                let grad = colorgrad::preset::turbo();
-
-                // Second pass: assign colors.
-                let new_points: Vec<ColoredPoint> = raw
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &(x, y, z))| {
-                        let color = if let Some(off) = rgb_off {
-                            let idx = (i * step) as u32 + off;
-                            Color::Rgb(
+                // Colorize from per-point RGB field or z-gradient.
+                if use_rgb {
+                    if let Some(rgb_off) = field_offset("rgb", &msg.fields) {
+                        for (i, pt) in points.iter_mut().enumerate() {
+                            let idx: u32 = i as u32 * step + rgb_off;
+                            pt.color = Color::Rgb(
                                 msg.data[(idx + 2) as usize],
                                 msg.data[(idx + 1) as usize],
                                 msg.data[idx as usize],
-                            )
-                        } else {
-                            let t = ((z - min_z) / z_range) as f32;
-                            let c = grad.at(t).to_rgba8();
-                            Color::Rgb(c[0], c[1], c[2])
-                        };
-                        ColoredPoint { x, y, color }
-                    })
-                    .collect();
+                            );
+                        }
+                    } else {
+                        for pt in points.iter_mut() {
+                            pt.color = default_color;
+                        }
+                    }
+                } else {
+                    let grad = colorgrad::preset::turbo();
+                    let z_range = (max_z - min_z).max(f64::EPSILON) as f32;
+                    for (pt, &wz) in points.iter_mut().zip(world_z.iter()) {
+                        let t = ((wz - min_z) as f32 / z_range).clamp(0.0, 1.0);
+                        let c = grad.at(t).to_rgba8();
+                        pt.color = Color::Rgb(c[0], c[1], c[2]);
+                    }
+                }
 
-                *points_cb.write().unwrap() = new_points;
+                // Filter NaN points.
+                points.retain(|pt| pt.x.is_finite() && pt.y.is_finite());
+
+                *points_cb.write().unwrap() = points;
             },
         )?;
 

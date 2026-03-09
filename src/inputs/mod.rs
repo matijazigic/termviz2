@@ -1,3 +1,5 @@
+pub mod image;
+pub mod marker;
 pub mod polygon;
 pub mod laser;
 pub mod listeners;

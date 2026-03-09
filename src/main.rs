@@ -94,6 +94,13 @@ async fn run_app(
                         }
 
                         if let Event::Key(input) = event {
+                            // Digit keys switch modes directly (1-based index).
+                            if let KeyCode::Char(c) = input.code {
+                                if c.is_ascii_digit() {
+                                    app.handle_input(&c.to_string());
+                                    continue;
+                                }
+                            }
                             if let Some(action) = app.key_to_action.get(&input.code).cloned() {
                                 app.handle_input(&action);
                             }

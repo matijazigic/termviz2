@@ -68,19 +68,41 @@ fn default_pose_style() -> PoseStyle {
     PoseStyle::default()
 }
 
+const fn default_pose_length() -> f64 { 0.2 }
+fn default_path_style() -> PoseStyle { PoseStyle::Line }
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PoseListenerConfig {
     pub topic: String,
     pub color: Color,
     #[serde(default = "default_pose_style")]
     pub style: PoseStyle,
+    #[serde(default = "default_pose_length")]
+    pub length: f64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PathListenerConfig {
+    pub topic: String,
+    pub color: Color,
+    #[serde(default = "default_path_style")]
+    pub style: PoseStyle,
+    #[serde(default = "default_pose_length")]
+    pub length: f64,
+}
+
+fn default_pointcloud_color() -> Color {
+    Color { r: 255, g: 255, b: 255 }
+}
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PointCloud2ListenerConfig {
     pub topic: String,
     #[serde(default = "bool::default")]
     pub use_rgb: bool,
+    #[serde(default = "default_pointcloud_color")]
+    pub default_color: Color,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,6 +114,13 @@ pub struct MapListenerConfig {
     pub threshold: i8,
 }
 
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ImageListenerConfig {
+    pub topic: String,
+    #[serde(default)]
+    pub rotation: i64,
+}
 
 const DEFAULT_PATH: &str = "/etc/termviz2/termviz2.yml";
 
@@ -117,9 +146,15 @@ pub struct Termviz2Config {
     #[serde(default)]
     pub pose_array_topics: Vec<PoseListenerConfig>,
     #[serde(default)]
-    pub path_topics: Vec<ListenerConfigColor>,
+    pub path_topics: Vec<PathListenerConfig>,
     #[serde(default)]
     pub pointcloud2_topics: Vec<PointCloud2ListenerConfig>,
+    #[serde(default)]
+    pub marker_topics: Vec<ListenerConfig>,
+    #[serde(default)]
+    pub marker_array_topics: Vec<ListenerConfig>,
+    #[serde(default)]
+    pub image_topics: Vec<ImageListenerConfig>,
 }
 
 impl Default for Termviz2Config {
@@ -161,6 +196,9 @@ impl Default for Termviz2Config {
             pose_array_topics: vec![],
             path_topics: vec![],
             pointcloud2_topics: vec![],
+            marker_topics: vec![],
+            marker_array_topics: vec![],
+            image_topics: vec![],
         }
     }
 }

@@ -5,8 +5,10 @@ use crate::ros::ROS;
 use nalgebra::{Isometry3, Quaternion, Translation3, UnitQuaternion};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line as TextLine, Span};
+use ratatui::layout::Rect;
+use ratatui::text::Text;
 use ratatui::widgets::canvas::{Canvas, Context, Line, Points};
-use ratatui::widgets::{Block, Borders};
+use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 use std::sync::Arc;
 use transforms::time::Timestamp;
@@ -42,7 +44,7 @@ pub trait UseViewport: AppMode {
     fn draw_in_viewport(&self, ctx: &mut Context);
     fn x_bounds(&self, scale_factor: f64) -> [f64; 2];
     fn y_bounds(&self) -> [f64; 2];
-    fn info(&self) -> String;
+    fn draw_overlay(&self, _f: &mut Frame, _area: Rect) {}
 }
 
 impl<T: UseViewport> Drawable for T {
@@ -53,9 +55,7 @@ impl<T: UseViewport> Drawable for T {
             Span::styled(
                 self.get_name(),
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" - "),
-            Span::raw(self.info()),
+            )
         ]);
         let canvas = Canvas::default()
             .block(Block::default().title(title).borders(Borders::NONE))
@@ -63,6 +63,7 @@ impl<T: UseViewport> Drawable for T {
             .y_bounds(self.y_bounds())
             .paint(|ctx| self.draw_in_viewport(ctx));
         f.render_widget(canvas, area);
+        self.draw_overlay(f, area);
     }
 }
 
@@ -147,7 +148,7 @@ impl AppMode for Viewport {
     }
 
     fn get_description(&self) -> Vec<String> {
-        vec!["Visualizes the robot and map in the terminal.".to_string()]
+        vec!["Visualizes the robot, map and defined topics in the terminal.".to_string()]
     }
 
     fn get_keymap(&self) -> Vec<[String; 2]> {
@@ -175,9 +176,30 @@ impl UseViewport for Viewport {
         ]
     }
 
-    fn info(&self) -> String {
+    fn draw_overlay(&self, f: &mut Frame, area: Rect) {
         let (rx, ry) = self.robot_position();
-        format!("zoom: {:.1}x | robot: ({:.2}, {:.2})", self.zoom, rx, ry)
+        let lines = vec![
+            TextLine::from(vec![
+                Span::styled("pos  ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}, {:.2}", rx, ry)),
+            ]),
+            TextLine::from(vec![
+                Span::styled("zoom ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.1}x", self.zoom)),
+            ]),
+        ];
+        let width = 20u16;
+        let height = lines.len() as u16 + 2;
+        let overlay = Rect {
+            x: area.width.saturating_sub(width + 1),
+            y: 1,
+            width,
+            height,
+        };
+        let paragraph = Paragraph::new(Text::from(lines))
+            .block(Block::default().borders(Borders::ALL))
+            .style(Style::default().fg(Color::White));
+        f.render_widget(paragraph, overlay);
     }
 
     fn draw_in_viewport(&self, ctx: &mut Context) {
@@ -212,7 +234,6 @@ impl UseViewport for Viewport {
             });
         }
 
-        ctx.layer();
         // Layer 3: pointclouds (per-point color)
         for pc in &self.listeners.pointclouds {
             let pts = pc.points.read().unwrap();
@@ -226,10 +247,11 @@ impl UseViewport for Viewport {
         for listener in &self.listeners.poses {
             if let Some((x, y, yaw)) = *listener.pose.read().unwrap() {
                 let color = Color::Rgb(listener.config.color.r, listener.config.color.g, listener.config.color.b);
+                let len = listener.config.length;
                 match listener.config.style {
-                    PoseStyle::Arrow => draw_arrow(ctx, x, y, yaw, self.axis_length, color),
-                    PoseStyle::Axes  => draw_axes(ctx, x, y, yaw, self.axis_length),
-                    PoseStyle::Line  => draw_arrow(ctx, x, y, yaw, self.axis_length, color),
+                    PoseStyle::Arrow => draw_arrow(ctx, x, y, yaw, len, color),
+                    PoseStyle::Axes  => draw_axes(ctx, x, y, yaw, len),
+                    PoseStyle::Line  => draw_arrow(ctx, x, y, yaw, len, color),
                 }
             }
         }
@@ -238,16 +260,17 @@ impl UseViewport for Viewport {
         // Layer 5: pose arrays
         for listener in &self.listeners.pose_arrays {
             let color = Color::Rgb(listener.config.color.r, listener.config.color.g, listener.config.color.b);
+            let len = listener.config.length;
             let poses = listener.poses.read().unwrap();
             match listener.config.style {
                 PoseStyle::Arrow => {
                     for &(x, y, yaw) in poses.iter() {
-                        draw_arrow(ctx, x, y, yaw, self.axis_length, color);
+                        draw_arrow(ctx, x, y, yaw, len, color);
                     }
                 }
                 PoseStyle::Axes => {
                     for &(x, y, yaw) in poses.iter() {
-                        draw_axes(ctx, x, y, yaw, self.axis_length);
+                        draw_axes(ctx, x, y, yaw, len);
                     }
                 }
                 PoseStyle::Line => draw_pose_lines(ctx, &poses, color),
@@ -261,14 +284,39 @@ impl UseViewport for Viewport {
         draw_axes(ctx, iso.translation.x, iso.translation.y, yaw, self.axis_length);
 
         ctx.layer();
-        // Layer 7: paths
+        // Layer 7: markers and marker arrays
+        for listener in &self.listeners.markers {
+            for ml in listener.store.write().unwrap().get_lines() {
+                ctx.draw(&Line { x1: ml.x1, y1: ml.y1, x2: ml.x2, y2: ml.y2, color: ml.color });
+            }
+        }
+        for listener in &self.listeners.marker_arrays {
+            for ml in listener.store.write().unwrap().get_lines() {
+                ctx.draw(&Line { x1: ml.x1, y1: ml.y1, x2: ml.x2, y2: ml.y2, color: ml.color });
+            }
+        }
+
+        ctx.layer();
+        // Layer 8: paths
         for path in &self.listeners.paths {
+            let color = Color::Rgb(path.config.color.r, path.config.color.g, path.config.color.b);
+            let len = path.config.length;
             let lines = path.lines.read().unwrap();
-            for &(x1, y1, x2, y2) in lines.iter() {
-                ctx.draw(&Line {
-                    x1, y1, x2, y2,
-                    color: Color::Rgb(path.config.color.r, path.config.color.g, path.config.color.b),
-                });
+            match path.config.style {
+                PoseStyle::Arrow => {
+                    for &(x1, y1, x2, y2) in lines.iter() {
+                        ctx.draw(&Line { x1, y1, x2, y2, color });
+                        let dx = x2 - x1;
+                        let dy = y2 - y1;
+                        let yaw = dy.atan2(dx);
+                        draw_arrow(ctx, x1, y1, yaw, len, color);
+                    }
+                }
+                PoseStyle::Line | PoseStyle::Axes => {
+                    for &(x1, y1, x2, y2) in lines.iter() {
+                        ctx.draw(&Line { x1, y1, x2, y2, color });
+                    }
+                }
             }
         }
     }
