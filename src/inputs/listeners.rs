@@ -1,6 +1,7 @@
 use crate::config::Termviz2Config;
 use crate::inputs::image::ImageListener;
 use crate::inputs::marker::{MarkerArrayListener, MarkerListener};
+use crate::inputs::odom::OdomListener;
 use crate::inputs::polygon::PolygonStampedListener;
 use crate::inputs::laser::LaserListener;
 use crate::inputs::map::MapListener;
@@ -21,6 +22,7 @@ pub struct Listeners {
     pub markers: Vec<MarkerListener>,
     pub marker_arrays: Vec<MarkerArrayListener>,
     pub images: Vec<ImageListener>,
+    pub odoms: Vec<OdomListener>,
 }
 
 impl Listeners {
@@ -119,6 +121,16 @@ impl Listeners {
             .map(|cfg| ImageListener::new(cfg.clone(), Arc::clone(&ros)))
             .collect();
 
-        Listeners { maps, polygons, lasers, poses, pose_arrays, paths, pointclouds, markers, marker_arrays, images }
+        let odoms = conf.odom_topics.iter().filter_map(|cfg| {
+            match OdomListener::new(cfg.topic.clone(), &ros) {
+                Ok(l) => Some(l),
+                Err(e) => {
+                    eprintln!("Failed to create odom listener for '{}': {:?}", cfg.topic, e);
+                    None
+                }
+            }
+        }).collect();
+
+        Listeners { maps, polygons, lasers, poses, pose_arrays, paths, pointclouds, markers, marker_arrays, images, odoms }
     }
 }

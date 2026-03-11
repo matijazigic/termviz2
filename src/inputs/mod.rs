@@ -1,4 +1,5 @@
 pub mod image;
+pub mod odom;
 pub mod marker;
 pub mod polygon;
 pub mod laser;

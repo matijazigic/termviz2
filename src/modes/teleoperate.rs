@@ -176,7 +176,8 @@ impl UseViewport for Teleoperate {
             TeleopMode::Classic => "classic",
             TeleopMode::Safe    => "safe",
         };
-        let lines = vec![
+
+        let mut lines = vec![
             TextLine::from(vec![
                 Span::styled("mode  ", Style::default().fg(Color::DarkGray)),
                 Span::raw(mode_str),
@@ -198,6 +199,26 @@ impl UseViewport for Teleoperate {
                 Span::raw(format!("{:.2}", self.wz)),
             ]),
         ];
+
+        if !self.viewport.listeners.odoms.is_empty() {
+            lines.push(TextLine::from(Span::styled("odom", Style::default().fg(Color::DarkGray))));
+        }
+        for odom in &self.viewport.listeners.odoms {
+            let (ovx, ovy, owz) = *odom.vel.read().unwrap();
+            lines.push(TextLine::from(vec![
+                Span::styled("vx    ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", ovx)),
+            ]));
+            lines.push(TextLine::from(vec![
+                Span::styled("vy    ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", ovy)),
+            ]));
+            lines.push(TextLine::from(vec![
+                Span::styled("wz    ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", owz)),
+            ]));
+        }
+
         let width = 22u16;
         let height = lines.len() as u16 + 2;
         let overlay = Rect {
@@ -211,7 +232,7 @@ impl UseViewport for Teleoperate {
             .style(Style::default().fg(Color::White));
         f.render_widget(paragraph, overlay);
 
-        // Bottom-right: general info
+        // Bottom-right: config info
         let zoom = *self.viewport.zoom.lock().unwrap();
         let general_lines = vec![
             TextLine::from(vec![

@@ -190,13 +190,29 @@ impl UseViewport for Viewport {
 
     fn draw_overlay(&self, f: &mut Frame, area: Rect) {
         let zoom = *self.zoom.lock().unwrap();
-        // Top-right: robot position
-        let pos_lines = vec![
+        // Top-right: robot position + odom velocities
+        let (rx, ry) = self.robot_position();
+        let mut pos_lines = vec![
             TextLine::from(vec![
                 Span::styled("pos  ", Style::default().fg(Color::DarkGray)),
-                Span::raw(format!("{:.2}, {:.2}", self.robot_position().0, self.robot_position().1)),
+                Span::raw(format!("{:.2}, {:.2}", rx, ry)),
             ]),
         ];
+        for odom in &self.listeners.odoms {
+            let (ovx, ovy, owz) = *odom.vel.read().unwrap();
+            pos_lines.push(TextLine::from(vec![
+                Span::styled("vx ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", ovx)),
+            ]));
+            pos_lines.push(TextLine::from(vec![
+                Span::styled("vy ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", ovy)),
+            ]));
+            pos_lines.push(TextLine::from(vec![
+                Span::styled("wz ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", owz)),
+            ]));
+        }
         let width = 22u16;
         let top_height = pos_lines.len() as u16 + 2;
         let top_overlay = Rect {

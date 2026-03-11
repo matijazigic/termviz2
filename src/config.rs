@@ -208,6 +208,8 @@ pub struct Termviz2Config {
     pub send_pose_topics: Vec<SendPoseConfig>,
     #[serde(default)]
     pub teleop: Option<TeleopConfig>,
+    #[serde(default)]
+    pub odom_topics: Vec<ListenerConfig>,
 }
 
 impl Default for Termviz2Config {
@@ -259,6 +261,7 @@ impl Default for Termviz2Config {
             image_topics: vec![],
             send_pose_topics: vec![],
             teleop: None,
+            odom_topics: vec![],
         }
     }
 }
