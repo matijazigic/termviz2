@@ -36,7 +36,7 @@ impl Listeners {
         }).collect();
 
         let polygons = conf.polygon_topics.iter().filter_map(|cfg| {
-            match PolygonStampedListener::new(cfg.clone(), Arc::clone(&ros), conf.fixed_frame.clone()) {
+            match PolygonStampedListener::new(cfg.clone(), Arc::clone(&ros), conf.fixed_frame.clone(), conf.robot_frame.clone()) {
                 Ok(l) => Some(l),
                 Err(e) => {
                     eprintln!("Failed to create polygon listener for '{}': {:?}", cfg.topic, e);

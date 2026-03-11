@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod inputs;
 mod modes;
+mod outputs;
 mod ros;
 mod terminal;
 mod utils;
@@ -79,7 +80,9 @@ async fn run_app(
         let mut delay = Delay::new(rate).fuse();
 
         select! {
-            _ = delay => (),
+            _ = delay => {
+                app.run();
+            },
             maybe_event = event => {
                 match maybe_event {
                     Some(Ok(event)) => {
@@ -112,7 +115,6 @@ async fn run_app(
             }
         };
 
-        app.run();
         terminal.draw(|f| {
             app.draw(f);
         })?;

@@ -1,4 +1,7 @@
 pub mod image_view;
+pub mod send_pose;
+pub mod teleoperate;
+pub mod topic_management;
 pub mod viewport;
 
 use ratatui::Frame;
@@ -15,6 +18,10 @@ pub mod input {
     pub const SHOW_HELP: &str = "show_help";
     pub const ROTATE_LEFT: &str = "rotate_left";
     pub const ROTATE_RIGHT: &str = "rotate_right";
+    pub const CONFIRM: &str = "confirm";
+    pub const CANCEL: &str = "cancel";
+    pub const INCREMENT_STEP: &str = "increment_step";
+    pub const DECREMENT_STEP: &str = "decrement_step";
 }
 
 /// Common interface every app mode must implement.

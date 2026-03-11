@@ -1,0 +1,129 @@
+fixed_frame: map
+robot_frame: base_link
+tf_topic: /robot_0/tf
+tf_static_topic: /robot_0/tf_static
+target_framerate: 30
+axis_length: 0.5
+visible_area:
+- -5.0
+- 5.0
+- -5.0
+- 5.0
+zoom_factor: 0.1
+key_mapping:
+  next: n
+  zoom_out: '-'
+  zoom_in: +
+  up: w
+  increment_step: f
+  show_help: h
+  cancel: Esc
+  left: a
+  decrement_step: r
+  right: d
+  previous: b
+  confirm: Enter
+  rotate_left: q
+  down: s
+  rotate_right: e
+map_topics:
+- topic: /robot_0/map
+  color:
+    r: 255
+    b: 255
+    g: 255
+  threshold: 50
+  transient_local: true
+- topic: /robot_0/global_costmap/costmap
+  color:
+    r: 255
+    b: 0
+    g: 0
+  threshold: 1
+  transient_local: false
+polygon_topics:
+- topic: /robot_0/local_costmap/published_footprint
+  color:
+    r: 0
+    b: 255
+    g: 0
+laser_topics:
+- topic: /robot_0/scan
+  color:
+    r: 200
+    b: 0
+    g: 0
+pose_topics:
+- topic: /robot_0/pose
+  color:
+    r: 255
+    b: 0
+    g: 165
+  style: arrow
+  length: 0.2
+- topic: /robot_0/goal_pose
+  color:
+    r: 50
+    b: 50
+    g: 200
+  style: arrow
+  length: 0.2
+pose_array_topics:
+- topic: /robot_0/pose_array
+  color:
+    r: 0
+    b: 0
+    g: 255
+  style: arrow
+  length: 0.2
+path_topics:
+- topic: /robot_0/plan
+  color:
+    r: 255
+    b: 0
+    g: 255
+  style: line
+  length: 0.2
+- topic: /robot_0/local_plan
+  color:
+    r: 255
+    b: 255
+    g: 255
+  style: line
+  length: 0.2
+pointcloud2_topics:
+- topic: /robot_0/pointcloud2
+  use_rgb: true
+  default_color:
+    r: 0
+    b: 255
+    g: 255
+marker_topics:
+- topic: /robot_0/visualization_marker
+marker_array_topics:
+- topic: /robot_0/visualization_marker_array
+image_topics:
+- topic: /robot_0/front_stereo_camera/left/image_raw
+  rotation: 0
+send_pose_topics:
+- topic: /robot_0/goal_pose
+  msg_type: PoseStamped
+  footprint_topic: /robot_0/local_costmap/published_footprint
+  footprint_color:
+    r: 255
+    b: 0
+    g: 165
+- topic: /robot_0/initialpose
+  msg_type: PoseWithCovarianceStamped
+  footprint_topic: /robot_0/local_costmap/published_footprint
+  footprint_color:
+    r: 0
+    b: 255
+    g: 200
+teleop:
+  cmd_vel_topic: /robot_0/cmd_vel
+  default_increment: 0.02
+  increment_step: 0.02
+  publish_cmd_vel_when_idle: false
+  mode: classic
+  max_vel: 1.0

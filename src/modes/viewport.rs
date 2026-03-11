@@ -5,12 +5,12 @@ use crate::ros::ROS;
 use nalgebra::{Isometry3, Quaternion, Translation3, UnitQuaternion};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line as TextLine, Span};
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::Text;
 use ratatui::widgets::canvas::{Canvas, Context, Line, Points};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use transforms::time::Timestamp;
 
 fn draw_arrow(ctx: &mut Context, x: f64, y: f64, yaw: f64, length: f64, color: Color) {
@@ -50,20 +50,28 @@ pub trait UseViewport: AppMode {
 impl<T: UseViewport> Drawable for T {
     fn draw(&self, f: &mut Frame) {
         let area = f.area();
-        let scale_factor = area.width as f64 / area.height as f64 * 0.5;
-        let title = TextLine::from(vec![
-            Span::styled(
-                self.get_name(),
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            )
-        ]);
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(1)])
+            .split(area);
+
+        let title_bar = Paragraph::new(TextLine::from(Span::styled(
+            self.get_name(),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        )))
+        .block(Block::default().borders(Borders::ALL))
+        .alignment(ratatui::layout::Alignment::Center);
+        f.render_widget(title_bar, chunks[0]);
+
+        let canvas_area = chunks[1];
+        let scale_factor = canvas_area.width as f64 / canvas_area.height as f64 * 0.5;
         let canvas = Canvas::default()
-            .block(Block::default().title(title).borders(Borders::NONE))
+            .block(Block::default().borders(Borders::NONE))
             .x_bounds(self.x_bounds(scale_factor))
             .y_bounds(self.y_bounds())
             .paint(|ctx| self.draw_in_viewport(ctx));
-        f.render_widget(canvas, area);
-        self.draw_overlay(f, area);
+        f.render_widget(canvas, canvas_area);
+        self.draw_overlay(f, canvas_area);
     }
 }
 
@@ -73,7 +81,7 @@ pub struct Viewport {
     pub fixed_frame: String,
     pub robot_frame: String,
     pub initial_bounds: Vec<f64>, // [x_min, x_max, y_min, y_max]
-    pub zoom: f64,
+    pub zoom: Arc<Mutex<f64>>,
     pub zoom_factor: f64,
     pub axis_length: f64,
 }
@@ -85,6 +93,7 @@ impl Viewport {
         fixed_frame: String,
         robot_frame: String,
         initial_bounds: Vec<f64>,
+        zoom: Arc<Mutex<f64>>,
         zoom_factor: f64,
         axis_length: f64,
     ) -> Self {
@@ -94,7 +103,7 @@ impl Viewport {
             fixed_frame,
             robot_frame,
             initial_bounds,
-            zoom: 1.0,
+            zoom,
             zoom_factor,
             axis_length,
         }
@@ -127,16 +136,17 @@ impl AppMode for Viewport {
     fn run(&mut self) {}
 
     fn reset(&mut self) {
-        self.zoom = 1.0;
+        *self.zoom.lock().unwrap() = 1.0;
     }
 
     fn handle_input(&mut self, action: &str) {
+        let mut zoom = self.zoom.lock().unwrap();
         match action {
-            input::ZOOM_IN => self.zoom += self.zoom_factor,
+            input::ZOOM_IN => *zoom += self.zoom_factor,
             input::ZOOM_OUT => {
-                self.zoom -= self.zoom_factor;
-                if self.zoom < 0.1 {
-                    self.zoom = 0.1;
+                *zoom -= self.zoom_factor;
+                if *zoom < 0.1 {
+                    *zoom = 0.1;
                 }
             }
             _ => {}
@@ -162,54 +172,75 @@ impl AppMode for Viewport {
 impl UseViewport for Viewport {
     fn x_bounds(&self, scale_factor: f64) -> [f64; 2] {
         let (rx, _) = self.robot_position();
+        let zoom = *self.zoom.lock().unwrap();
         [
-            rx + self.initial_bounds[0] / self.zoom * scale_factor,
-            rx + self.initial_bounds[1] / self.zoom * scale_factor,
+            rx + self.initial_bounds[0] / zoom * scale_factor,
+            rx + self.initial_bounds[1] / zoom * scale_factor,
         ]
     }
 
     fn y_bounds(&self) -> [f64; 2] {
         let (_, ry) = self.robot_position();
+        let zoom = *self.zoom.lock().unwrap();
         [
-            ry + self.initial_bounds[2] / self.zoom,
-            ry + self.initial_bounds[3] / self.zoom,
+            ry + self.initial_bounds[2] / zoom,
+            ry + self.initial_bounds[3] / zoom,
         ]
     }
 
     fn draw_overlay(&self, f: &mut Frame, area: Rect) {
-        let (rx, ry) = self.robot_position();
-        let lines = vec![
+        let zoom = *self.zoom.lock().unwrap();
+        // Top-right: robot position
+        let pos_lines = vec![
             TextLine::from(vec![
                 Span::styled("pos  ", Style::default().fg(Color::DarkGray)),
-                Span::raw(format!("{:.2}, {:.2}", rx, ry)),
-            ]),
-            TextLine::from(vec![
-                Span::styled("zoom ", Style::default().fg(Color::DarkGray)),
-                Span::raw(format!("{:.1}x", self.zoom)),
+                Span::raw(format!("{:.2}, {:.2}", self.robot_position().0, self.robot_position().1)),
             ]),
         ];
-        let width = 20u16;
-        let height = lines.len() as u16 + 2;
-        let overlay = Rect {
-            x: area.width.saturating_sub(width + 1),
-            y: 1,
+        let width = 22u16;
+        let top_height = pos_lines.len() as u16 + 2;
+        let top_overlay = Rect {
+            x: area.x + area.width.saturating_sub(width + 1),
+            y: area.y,
             width,
-            height,
+            height: top_height,
         };
-        let paragraph = Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL))
+        let top_paragraph = Paragraph::new(Text::from(pos_lines))
+            .block(Block::default().title(" Info ").borders(Borders::ALL))
             .style(Style::default().fg(Color::White));
-        f.render_widget(paragraph, overlay);
+        f.render_widget(top_paragraph, top_overlay);
+
+        // Bottom-right: general info
+        let general_lines = vec![
+            TextLine::from(vec![
+                Span::styled("zoom        ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.1}x", zoom)),
+            ]),
+            TextLine::from(vec![
+                Span::styled("zoom factor ", Style::default().fg(Color::DarkGray)),
+                Span::raw(format!("{:.2}", self.zoom_factor)),
+            ]),
+        ];
+        let bot_height = general_lines.len() as u16 + 2;
+        let bot_overlay = Rect {
+            x: area.x + area.width.saturating_sub(width + 1),
+            y: (area.y + area.height).saturating_sub(bot_height + 1),
+            width,
+            height: bot_height,
+        };
+        let bot_paragraph = Paragraph::new(Text::from(general_lines))
+            .block(Block::default().title(" Config").borders(Borders::ALL))
+            .style(Style::default().fg(Color::White));
+        f.render_widget(bot_paragraph, bot_overlay);
     }
 
     fn draw_in_viewport(&self, ctx: &mut Context) {
-        // Layer 0: maps
+        // Layer 0: maps / costmaps (each may have multiple colour buckets)
         for map in &self.listeners.maps {
-            let pts = map.points.read().unwrap();
-            ctx.draw(&Points {
-                coords: &pts,
-                color: Color::Rgb(map.config.color.r, map.config.color.g, map.config.color.b),
-            });
+            let layers = map.layers.read().unwrap();
+            for (color, pts) in layers.iter() {
+                ctx.draw(&Points { coords: pts, color: *color });
+            }
         }
 
         ctx.layer();

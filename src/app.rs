@@ -1,7 +1,7 @@
 use crate::{
     config::Termviz2Config,
     inputs::listeners::Listeners,
-    modes::{input, BaseMode, image_view::ImageView, viewport::Viewport},
+    modes::{input, BaseMode, image_view::ImageView, send_pose::SendPose, teleoperate::Teleoperate, topic_management::TopicManager, viewport::Viewport},
     ros::ROS,
     utils,
 };
@@ -12,7 +12,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table, Wrap};
 use ratatui::Frame;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct App {
     pub key_to_action: HashMap<KeyCode, String>,
@@ -31,21 +31,61 @@ impl App {
         let mut listeners = Listeners::new(Arc::clone(&ros), &config);
         let images = std::mem::take(&mut listeners.images);
 
+        let zoom = Arc::new(Mutex::new(1.0f64));
+
         let viewport = Viewport::new(
             Arc::clone(&ros),
             listeners,
             config.fixed_frame.clone(),
             config.robot_frame.clone(),
             config.visible_area.clone(),
+            Arc::clone(&zoom),
             config.zoom_factor,
             config.axis_length,
         );
-        let image_view = ImageView::new(images);
+
+        let mut modes: Vec<Box<dyn BaseMode>> = vec![Box::new(viewport)];
+
+        if let Some(teleop_cfg) = config.teleop.clone() {
+            let tl_listeners = Listeners::new(Arc::clone(&ros), &config);
+            let tl_viewport = Viewport::new(
+                Arc::clone(&ros),
+                tl_listeners,
+                config.fixed_frame.clone(),
+                config.robot_frame.clone(),
+                config.visible_area.clone(),
+                Arc::clone(&zoom),
+                config.zoom_factor,
+                config.axis_length,
+            );
+            if let Some(teleop) = Teleoperate::new(teleop_cfg, tl_viewport) {
+                modes.push(Box::new(teleop));
+            }
+        }
+
+        if !config.send_pose_topics.is_empty() {
+            let sp_listeners = Listeners::new(Arc::clone(&ros), &config);
+            let sp_viewport = Viewport::new(
+                Arc::clone(&ros),
+                sp_listeners,
+                config.fixed_frame.clone(),
+                config.robot_frame.clone(),
+                config.visible_area.clone(),
+                Arc::clone(&zoom),
+                config.zoom_factor,
+                config.axis_length,
+            );
+            let send_pose = SendPose::new(&config.send_pose_topics, sp_viewport);
+            modes.push(Box::new(send_pose));
+        }
+
+        modes.push(Box::new(ImageView::new(images)));
+        modes.push(Box::new(TopicManager::new(Arc::clone(&ros), config.clone())));
 
         App {
             key_to_action,
             action_to_key,
-            modes: vec![Box::new(viewport), Box::new(image_view)],
+            modes,
             active: 0,
             show_help: false,
         }

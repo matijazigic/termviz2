@@ -105,6 +105,8 @@ pub struct PointCloud2ListenerConfig {
     pub default_color: Color,
 }
 
+const fn default_true() -> bool { true }
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MapListenerConfig {
     pub topic: String,
@@ -112,6 +114,10 @@ pub struct MapListenerConfig {
     pub color: Color,
     #[serde(default = "default_map_threshold")]
     pub threshold: i8,
+    /// true  = TransientLocal QoS (static map)
+    /// false = Volatile QoS + RViz cost-colour gradient (costmap)
+    #[serde(default = "default_true")]
+    pub transient_local: bool,
 }
 
 
@@ -120,6 +126,49 @@ pub struct ImageListenerConfig {
     pub topic: String,
     #[serde(default)]
     pub rotation: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SendPoseConfig {
+    pub topic: String,
+    /// One of: "Pose", "PoseStamped", "PoseWithCovarianceStamped"
+    pub msg_type: String,
+    /// Optional polygon topic to use as ghost footprint (must be in polygon_topics).
+    #[serde(default)]
+    pub footprint_topic: Option<String>,
+    /// Color of the ghost footprint. Defaults to gray if not set.
+    #[serde(default = "default_ghost_footprint_color")]
+    pub footprint_color: Color,
+}
+
+fn default_ghost_footprint_color() -> Color {
+    Color { r: 128, g: 128, b: 128 }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TeleopMode {
+    Classic,
+    #[default]
+    Safe,
+}
+
+const fn default_teleop_increment() -> f64 { 0.1 }
+const fn default_teleop_max_vel() -> f64 { 0.5 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TeleopConfig {
+    pub cmd_vel_topic: String,
+    #[serde(default = "default_teleop_increment")]
+    pub default_increment: f64,
+    #[serde(default = "default_teleop_increment")]
+    pub increment_step: f64,
+    #[serde(default = "bool::default")]
+    pub publish_cmd_vel_when_idle: bool,
+    #[serde(default)]
+    pub mode: TeleopMode,
+    #[serde(default = "default_teleop_max_vel")]
+    pub max_vel: f64,
 }
 
 const DEFAULT_PATH: &str = "/etc/termviz2/termviz2.yml";
@@ -155,6 +204,10 @@ pub struct Termviz2Config {
     pub marker_array_topics: Vec<ListenerConfig>,
     #[serde(default)]
     pub image_topics: Vec<ImageListenerConfig>,
+    #[serde(default)]
+    pub send_pose_topics: Vec<SendPoseConfig>,
+    #[serde(default)]
+    pub teleop: Option<TeleopConfig>,
 }
 
 impl Default for Termviz2Config {
@@ -178,11 +231,16 @@ impl Default for Termviz2Config {
                 ("next".to_string(), "n".to_string()),
                 ("previous".to_string(), "b".to_string()),
                 ("show_help".to_string(), "h".to_string()),
+                ("confirm".to_string(), "Enter".to_string()),
+                ("cancel".to_string(), "Esc".to_string()),
+                ("increment_step".to_string(), "e".to_string()),
+                ("decrement_step".to_string(), "q".to_string()),
             ]),
             map_topics: vec![MapListenerConfig {
                 topic: "map".to_string(),
                 color: default_map_color(),
                 threshold: default_map_threshold(),
+                transient_local: true,
             }],
             polygon_topics: vec![ListenerConfigColor {
                 topic: "/robot_0/local_costmap/published_footprint".to_string(),
@@ -199,6 +257,8 @@ impl Default for Termviz2Config {
             marker_topics: vec![],
             marker_array_topics: vec![],
             image_topics: vec![],
+            send_pose_topics: vec![],
+            teleop: None,
         }
     }
 }
