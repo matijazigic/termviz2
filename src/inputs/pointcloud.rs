@@ -15,7 +15,6 @@ pub struct ColoredPoint {
 }
 
 pub struct PointCloud2Listener {
-    pub config: PointCloud2ListenerConfig,
     pub points: Arc<RwLock<Vec<ColoredPoint>>>,
     _sub: Arc<dyn std::any::Any + Send + Sync>,
 }
@@ -123,6 +122,6 @@ impl PointCloud2Listener {
             },
         )?;
 
-        Ok(PointCloud2Listener { config, points, _sub: Arc::new(sub) })
+        Ok(PointCloud2Listener { points, _sub: Arc::new(sub) })
     }
 }

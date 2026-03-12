@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 pub type ColorLayer = (Color, Vec<(f64, f64)>);
 
 pub struct MapListener {
-    pub config: MapListenerConfig,
+    _config: MapListenerConfig,
     /// Pre-computed, colour-bucketed world-space points ready for rendering.
     /// Static map  → one layer using config.color.
     /// Costmap     → multiple layers using the RViz cost-colour gradient.
@@ -135,7 +135,7 @@ impl MapListener {
         )?;
 
         Ok(MapListener {
-            config,
+            _config: config,
             layers,
             _sub: Arc::new(sub),
         })

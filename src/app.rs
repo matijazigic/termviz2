@@ -1,7 +1,7 @@
 use crate::{
     config::Termviz2Config,
     inputs::listeners::Listeners,
-    modes::{input, BaseMode, image_view::ImageView, send_pose::SendPose, teleoperate::Teleoperate, topic_management::TopicManager, viewport::Viewport},
+    modes::{input, BaseMode, image_view::ImageView, plot_view::PlotView, send_pose::SendPose, teleoperate::Teleoperate, topic_management::TopicManager, viewport::Viewport},
     ros::ROS,
     utils,
 };
@@ -80,6 +80,7 @@ impl App {
         }
 
         modes.push(Box::new(ImageView::new(images)));
+        modes.push(Box::new(PlotView::new(Arc::clone(&ros))));
         modes.push(Box::new(TopicManager::new(Arc::clone(&ros), config.clone())));
 
         App {

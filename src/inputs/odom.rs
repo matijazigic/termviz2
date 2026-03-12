@@ -6,7 +6,6 @@ use std::sync::{Arc, RwLock};
 pub type OdomVel = (f64, f64, f64);
 
 pub struct OdomListener {
-    pub topic: String,
     pub vel: Arc<RwLock<OdomVel>>,
     _sub: Arc<dyn std::any::Any + Send + Sync>,
 }
@@ -26,6 +25,6 @@ impl OdomListener {
             },
         )?;
 
-        Ok(OdomListener { topic, vel, _sub: Arc::new(sub) })
+        Ok(OdomListener { vel, _sub: Arc::new(sub) })
     }
 }

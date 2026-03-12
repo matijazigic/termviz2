@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use ratatui::style::Color as TuiColor;
 
 fn default_map_color() -> Color {
     Color { r: 255, g: 255, b: 255 }
@@ -9,22 +8,6 @@ fn default_map_color() -> Color {
 
 fn default_map_threshold() -> i8 {
     1
-}
-
-const fn default_int() -> i64 {
-    0
-}
-
-const fn color_white() -> Color {
-    Color {
-        r: 255,
-        g: 255,
-        b: 255,
-    }
-}
-
-const fn color_red() -> Color {
-    Color { r: 255, g: 0, b: 0 }
 }
 
 const fn color_blue() -> Color {
@@ -38,11 +21,6 @@ pub struct Color {
     pub g: u8,
 }
 
-impl Color {
-    pub fn to_tui(&self) -> TuiColor {
-        return TuiColor::Rgb(self.r, self.g, self.b);
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListenerConfig {

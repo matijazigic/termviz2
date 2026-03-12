@@ -24,7 +24,6 @@ pub struct MarkerLine {
 
 struct StoredMarker {
     lines: Vec<MarkerLine>,
-    id: i32,
     deadline: Option<Instant>,
 }
 
@@ -54,7 +53,7 @@ impl MarkerStore {
         self.markers
             .entry(ns)
             .or_default()
-            .insert(id, StoredMarker { lines, id, deadline });
+            .insert(id, StoredMarker { lines, deadline });
     }
 
     pub fn delete(&mut self, ns: &str, id: i32) {
@@ -65,10 +64,6 @@ impl MarkerStore {
 
     pub fn clear(&mut self) {
         self.markers.clear();
-    }
-
-    pub fn clear_namespace(&mut self, ns: &str) {
-        self.markers.remove(ns);
     }
 
     /// Returns all active lines, pruning expired markers in-place.
@@ -357,7 +352,7 @@ fn handle_marker(
 // ── listeners ─────────────────────────────────────────────────────────────────
 
 pub struct MarkerListener {
-    pub config: ListenerConfig,
+    _config: ListenerConfig,
     pub store: Arc<RwLock<MarkerStore>>,
     _sub: Arc<dyn std::any::Any + Send + Sync>,
 }
@@ -394,12 +389,12 @@ impl MarkerListener {
             },
         )?;
 
-        Ok(MarkerListener { config, store, _sub: Arc::new(sub) })
+        Ok(MarkerListener { _config: config, store, _sub: Arc::new(sub) })
     }
 }
 
 pub struct MarkerArrayListener {
-    pub config: ListenerConfig,
+    _config: ListenerConfig,
     pub store: Arc<RwLock<MarkerStore>>,
     _sub: Arc<dyn std::any::Any + Send + Sync>,
 }
@@ -439,6 +434,6 @@ impl MarkerArrayListener {
             },
         )?;
 
-        Ok(MarkerArrayListener { config, store, _sub: Arc::new(sub) })
+        Ok(MarkerArrayListener { _config: config, store, _sub: Arc::new(sub) })
     }
 }

@@ -1,4 +1,5 @@
 pub mod image_view;
+pub mod plot_view;
 pub mod send_pose;
 pub mod teleoperate;
 pub mod topic_management;

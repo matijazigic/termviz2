@@ -150,9 +150,6 @@ impl ROS {
         }
     }
 
-    pub fn ok(&self) -> bool {
-        self.executor_commands.context().ok()
-    }
 }
 
 impl Drop for ROS {
