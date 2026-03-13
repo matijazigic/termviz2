@@ -2,7 +2,7 @@
 
 A terminal-based ROS 2 visualizer. Renders maps, laser scans, point clouds, poses, paths, images, and markers directly in the terminal using half-block characters, with support for teleoperation, pose publishing, and real-time data plotting.
 
-**Developed on the shoulders of [termviz](https://github.com/carzum/termviz)**
+**Developed on the shoulders of Carsten Zumstande and others [termviz](https://github.com/carzum/termviz)!**
 
 ![Rust](https://img.shields.io/badge/language-Rust-orange) ![ROS2](https://img.shields.io/badge/ROS2-Jazzy-blue)
 
