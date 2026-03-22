@@ -4,6 +4,8 @@ A terminal-based ROS 2 visualizer. Renders maps, laser scans, point clouds, pose
 
 ![Rust](https://img.shields.io/badge/language-Rust-orange) ![ROS2](https://img.shields.io/badge/ROS2-Jazzy-blue)
 
+![View](sources/termviz2_view.gif)
+
 ## Features
 
 - Real-time visualization of common ROS 2 sensor and navigation data
@@ -116,6 +118,8 @@ Renders `sensor_msgs/msg/Image` topics as half-block terminal graphics, scaled t
 ### Plot
 
 Browse available ROS 2 topics at runtime and select numeric fields to plot as a scrolling time-series chart.
+
+![View](sources/termviz2_plot.gif)
 
 **Browsing topics:**
 
