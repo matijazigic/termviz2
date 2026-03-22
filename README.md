@@ -110,6 +110,12 @@ Supports `Pose`, `PoseStamped`, and `PoseWithCovarianceStamped` message types. A
 
 ### Image View
 
+Image from Nvidia Isaac SIM:
+![Image 1](sources/termviz_image2.png)
+
+Same Image in TermViz:
+![Image 2](sources/termviz_image1.png)
+
 Renders `sensor_msgs/msg/Image` topics as half-block terminal graphics, scaled to fit the terminal.
 
 | Key | Action |
@@ -121,7 +127,9 @@ Renders `sensor_msgs/msg/Image` topics as half-block terminal graphics, scaled t
 
 Browse available ROS 2 topics at runtime and select numeric fields to plot as a scrolling time-series chart.
 
-![View](sources/termviz2_plot.gif)
+![Plot 1](sources/termviz2_plot2.png)
+
+![Plot 2](sources/termviz2_plot.gif)
 
 **Browsing topics:**
 
@@ -167,6 +175,8 @@ Supported topic types:
 | `sensor_msgs/msg/FluidPressure` | fluid_pressure |
 
 ### Topic Manager
+
+![Topic Manager](sources/termviz2_topics.gif)
 
 Dynamically add or remove topics from the active visualization without restarting. Changes are saved to `~/.config/termviz2/termviz2.yml`.
 
