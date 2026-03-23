@@ -4,6 +4,8 @@ A terminal-based ROS 2 visualizer. Renders maps, laser scans, point clouds, pose
 
 **Developed on the shoulders of Carsten Zumsande and others - ROS1 version [termviz](https://github.com/carzum/termviz)!**
 
+**Similar stuff is in the parallel development phase on the TermViz repo - keep an eye on [termviz](https://github.com/carzum/termviz](https://github.com/carzum/termviz/pull/102)!**
+
 ![Rust](https://img.shields.io/badge/language-Rust-orange) ![ROS2](https://img.shields.io/badge/ROS2-Jazzy-blue)
 
 ![View](sources/termviz2_view.gif)
